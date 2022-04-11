@@ -1,0 +1,6 @@
+Arg [0] : _payees (address[]): 0xdc1874b38ebd2b55a46fa75a3626d19e25f47736,0x8b2d029ee53ae8238182198aed13e9098fbd2266
+Arg [1] : _shares (uint256[]): 40,60
+Arg [2] : _name (string): Bae Apes NFT
+Arg [3] : _symbol (string): BAPES
+Arg [4] : _initBaseURI (string): ipfs://QmWMQzBjrA796FqBGg1FfQxLb4Mb1zEnqdNix4F4k487Vs/
+Arg [5] : _proxyRegistryAddress (address): 0xa5409ec958c83c3f309868babaca7c86dcb077c1
