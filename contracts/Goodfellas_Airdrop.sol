@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
-contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
+contract Goodfellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
     using Counters for Counters.Counter;
     using Strings for uint256;
 
@@ -23,7 +23,7 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
 
     string private baseURI;
     address private openSeaProxyRegistryAddress;
-    address[] public _team;
+    address[] private _team;
     bool private isOpenSeaProxyActive = true;
 
     uint256 public constant MAX_WL_GAC_PER_WALLET = 3;
@@ -45,29 +45,23 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
     mapping(address => uint256) public communityMintCounts;
     mapping(address => bool) public claimed;
 
-    // ============ ACCESS CONTROL/SANITY MODIFIERS ============
-
-    modifier publicSaleActive() {
+    //============ Internal functions to reduce file size ============
+    function assertPublicSaleActive() private view {
         require(isPublicSaleActive, "Public sale is not open");
-        _;
     }
 
-    modifier communitySaleActive() {
+    function assertCommunitySaleActive() private view {
         require(isCommunitySaleActive, "Community sale is not open");
-        _;
     }
 
-    modifier canMintGACs(uint256 numberOfTokens) {
-
+      function assertCanMintGAC(uint256 numberOfTokens) private view {
         require(
             tokenCounter.current() + numberOfTokens <=
                 maxApes - maxGiftedGACs,
             "Not enough GACs remaining to mint"
         );
-        _;
     }
-
-    modifier canGiftGACs(uint256 num) {
+      function assertCanGiftGACs(uint256 num) private view {
         require(
             numGiftedGACs + num <= maxGiftedGACs,
             "Not enough GACs remaining to gift"
@@ -76,18 +70,14 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
             tokenCounter.current() + num <= maxApes,
             "Not enough GACs remaining to mint"
         );
-        _;
     }
-
-    modifier isCorrectPayment(uint256 price, uint256 numberOfTokens) {
+      function assertIsCorrectPayment(uint256 price, uint256 numberOfTokens) private view {
         require(
             price * numberOfTokens == msg.value,
             "Incorrect ETH value sent value is "
         );
-        _;
     }
-
-    modifier isValidMerkleProof(bytes32[] calldata merkleProof, bytes32 root) {
+      function assertIsValidMerkleProof(bytes32[] calldata merkleProof, bytes32 root) private view {
         require(
             MerkleProof.verify(
                 merkleProof,
@@ -96,6 +86,37 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
             ),
             "Address does not exist in list"
         );
+    }
+
+    // ============ ACCESS CONTROL/SANITY MODIFIERS ============
+
+    modifier publicSaleActive() {
+        assertPublicSaleActive();
+        _;
+    }
+
+    modifier communitySaleActive() {
+        assertCommunitySaleActive();
+        _;
+    }
+
+    modifier canMintGACs(uint256 numberOfTokens) {
+        assertCanMintGAC(numberOfTokens);
+        _;
+    }
+
+    modifier canGiftGACs(uint256 num) {
+        assertCanGiftGACs(num);
+        _;
+    }
+
+    modifier isCorrectPayment(uint256 price, uint256 numberOfTokens) {
+        assertIsCorrectPayment(price, numberOfTokens);
+        _;
+    }
+
+    modifier isValidMerkleProof(bytes32[] calldata merkleProof, bytes32 root) {
+        assertIsValidMerkleProof(merkleProof, root);
         _;
     }
 
@@ -176,6 +197,7 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
 
         _safeMint(msg.sender, nextTokenId());
     }
+    
 
     // ============ PUBLIC READ-ONLY FUNCTIONS ============
 
@@ -232,11 +254,23 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
             release(payable(_team[i]));
         }
     }
-
-    function withdrawTokens(IERC20 token) public onlyOwner {
-        uint256 balance = token.balanceOf(address(this));
-        token.transfer(msg.sender, balance);
-    }
+    //Not sure we need this function
+    // function withdrawTokens(IERC20 token) public onlyOwner {
+    //     uint256 balance = token.balanceOf(address(this));
+    //     token.transfer(msg.sender, balance);
+    // }
+    //Airdrop to be implemented ~ not working currently
+    // function airDrop(address[] memory recipients, uint256 quantity)
+    //     external onlyOwner
+    //     canGiftGACs(quantity * recipients.length)
+    //     {
+    //         for (uint256 i = 0; i < recipients.length; i++) {
+    //          numGiftedGACs += quantity;
+    //           for (uint256 j = 0; j < quantity; j++) {
+    //         _safeMint(recipients[i], nextTokenId());
+    //         }
+    // }
+    //     }
 
     // ============ SUPPORTING FUNCTIONS ============
 
