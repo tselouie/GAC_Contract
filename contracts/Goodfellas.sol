@@ -15,12 +15,12 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
-contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
+contract Goodfellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
     using Counters for Counters.Counter;
     using Strings for uint256;
-
+    enum Status { DISABLED, GIFT, PRIVATE, PUBLIC }
     Counters.Counter private tokenCounter;
-
+    
     string private baseURI;
     address private openSeaProxyRegistryAddress;
     address[] public _team;
@@ -30,32 +30,21 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
     uint256 public maxApes;
 
     uint256 public PUBLIC_SALE_PRICE = 0.007 ether;
-    bool public isPublicSaleActive;
+    
+    Status public status = Status.DISABLED;
 
     uint256 public constant COMMUNITY_SALE_PRICE = 0.005 ether;
-    bool public isCommunitySaleActive;
     uint256 public maxCommunitySaleGACs;
     bytes32 public communitySaleMerkleRoot;
     
     uint256 public maxGiftedGACs;
-
     uint256 public numGiftedGACs;
-    bytes32 public claimListMerkleRoot;
 
     mapping(address => uint256) public communityMintCounts;
     mapping(address => bool) public claimed;
 
     // ============ ACCESS CONTROL/SANITY MODIFIERS ============
 
-    modifier publicSaleActive() {
-        require(isPublicSaleActive, "Public sale is not open");
-        _;
-    }
-
-    modifier communitySaleActive() {
-        require(isCommunitySaleActive, "Community sale is not open");
-        _;
-    }
 
     modifier canMintGACs(uint256 numberOfTokens) {
 
@@ -121,9 +110,12 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
         payable
         nonReentrant
         isCorrectPayment(PUBLIC_SALE_PRICE, numberOfTokens)
-        publicSaleActive
         canMintGACs(numberOfTokens)
     {  
+         require(
+            status == Status.PUBLIC,
+            "Public Sale Inactive"
+        );
         require(
             numberOfTokens <= 5,
             "Max GACs you can mint at one time is five"
@@ -140,12 +132,16 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
         external
         payable
         nonReentrant
-        communitySaleActive
         canMintGACs(numberOfTokens)
         isCorrectPayment(COMMUNITY_SALE_PRICE, numberOfTokens)
         isValidMerkleProof(merkleProof, communitySaleMerkleRoot)
     {
         uint256 numAlreadyMinted = communityMintCounts[msg.sender];
+
+        require(
+            status == Status.PRIVATE,
+            "Private Sale Inactive"
+        );
 
         require(
             numAlreadyMinted + numberOfTokens <= MAX_WL_GAC_PER_WALLET,
@@ -164,12 +160,14 @@ contract GoodFellas is ERC721, Ownable, ReentrancyGuard, PaymentSplitter {
         }
     }
 
-function claim(bytes32[] calldata merkleProof, uint256 quantity)
+    function claim()
         external
-        isValidMerkleProof(merkleProof, claimListMerkleRoot)
-        canGiftGACs(quantity)
+        canGiftGACs(1)
     {
-
+        require(
+            status == Status.GIFT,
+            "Gift Claim Inactive"
+        );
         claimed[msg.sender] = true;
         numGiftedGACs += 1;
 
@@ -184,6 +182,14 @@ function claim(bytes32[] calldata merkleProof, uint256 quantity)
     function getLastTokenId() external view returns (uint256) {
         return tokenCounter.current();
     }
+    function getStatusString() public view returns (string memory) {
+        Status temp = status;
+        if (temp == Status.DISABLED) return "DISABLED";
+        if (temp == Status.GIFT) return "GIFT";
+        if (temp == Status.PRIVATE) return "PRIVATE";
+        if (temp == Status.PUBLIC) return "PUBLIC";
+        return "";
+        }
 
     // ============ OWNER-ONLY ADMIN FUNCTIONS ============
 
@@ -200,28 +206,18 @@ function claim(bytes32[] calldata merkleProof, uint256 quantity)
         isOpenSeaProxyActive = _isOpenSeaProxyActive;
     }
 
-    function setIsPublicSaleActive(bool _isPublicSaleActive)
-        external
-        onlyOwner
-    {
-        isPublicSaleActive = _isPublicSaleActive;
-    }
+
+
+   function setStatus(uint _status) external onlyOwner {
+       status = Status(_status);
+   }
+
     function setPublicMintPrice(uint256 newMintPrice) external onlyOwner {
         PUBLIC_SALE_PRICE = newMintPrice;
     }
     
-    function setIsCommunitySaleActive(bool _isCommunitySaleActive)
-        external
-        onlyOwner
-    {
-        isCommunitySaleActive = _isCommunitySaleActive;
-    }
-
       function setCommunityListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
         communitySaleMerkleRoot = merkleRoot;
-    }
-    function setClaimListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
-        claimListMerkleRoot = merkleRoot;
     }
 
       // RELEASE FUNDS VIA PAYMENTSPLITTER
