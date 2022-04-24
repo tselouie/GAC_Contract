@@ -1,6 +1,6 @@
 
 const deployContract = async () => {
-    const contractName = 'Goodfellas'
+    const contractName = "Goodfellas";
     const networkName = 'rinkeby';
     const payees = ['0x3F99E37c9F6c3D0E81938B90a0adE08565E32178','0x99B325e95b4060865208cC159cCB9DA51EbbF299']
     const shares = [93,7]
